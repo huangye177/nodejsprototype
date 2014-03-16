@@ -4,7 +4,7 @@ nodejsprototype
 A pack of functionality prototypes for node.js
 
 
-## How to:
+## How to
 
 prerequisites: `npm install formidable`
 
