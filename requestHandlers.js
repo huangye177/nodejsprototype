@@ -11,6 +11,26 @@ function start(response) {
     'charset=UTF-8" />'+
     '</head>'+
     '<body>'+
+    '<h2>Function List:</h2>'+
+    '<p><a href="fileupload">Image Upload</a></p>'+
+	'<p><a href="show">Show Uploaded Image</a></p>'+
+    '</body>'+
+    '</html>';
+
+    response.writeHead(200, {"Content-Type": "text/html"});
+    response.write(body);
+    response.end();
+}
+
+function fileupload(response) {
+  console.log("Request handler 'start' was called.");
+
+  var body = '<html>'+
+    '<head>'+
+    '<meta http-equiv="Content-Type" content="text/html; '+
+    'charset=UTF-8" />'+
+    '</head>'+
+    '<body>'+
     '<form action="/upload" enctype="multipart/form-data" '+
     'method="post">'+
     '<input type="file" name="upload" multiple="multiple">'+
@@ -61,5 +81,6 @@ function show(response) {
 }
 
 exports.start = start;
+exports.fileupload = fileupload;
 exports.upload = upload;
 exports.show = show;
