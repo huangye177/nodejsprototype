@@ -6,7 +6,11 @@ A pack of functionality prototypes for node.js
 
 ## How to:
 
-`npm install formidable`
+prerequisites: `npm install formidable`
+
+start server: `node index.js`
+
+visit: `localhost:8888`
 
 ===============
 ## Prototype Content
