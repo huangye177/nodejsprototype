@@ -14,6 +14,10 @@ prerequisites:
 
 `npm install mongoose`
 
+`npm install fibers`
+
+`npm install wait.for`
+
 start server: `node index.js`
 
 visit: `localhost:8888`
