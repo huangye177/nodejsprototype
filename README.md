@@ -6,7 +6,7 @@ A pack of functionality prototypes for node.js
 
 ## How to
 
-prerequisites: `npm install formidable`
+prerequisites: `npm install formidable` (or from European mirror: `npm --registry http://registry.npmjs.eu/ install formidable`)
 
 start server: `node index.js`
 
