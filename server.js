@@ -9,7 +9,7 @@ function start(route, handle) {
     console.log("Request for " + pathname + " received.");
 
     // route the request and response to individual handle based on path name
-    route(handle, pathname, response, request);
+    route(handle, pathname, request, response);
   }
 
   // start server with given onRequest method and port

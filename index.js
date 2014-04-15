@@ -10,6 +10,11 @@ handle["/start"] = requestHandlers.start;
 handle["/fileupload"] = requestHandlers.fileupload;
 handle["/upload"] = requestHandlers.upload;
 handle["/show"] = requestHandlers.show;
+handle["/mongorun"] = requestHandlers.mongorun;
 
 // load server.js to process path-handler mapping with the route method from router.js
+
+// router.route(handle, pathname, response, request) redirects the 
+// incoming requests to proper handler according to the given pathname, 
+// then sends the results to response
 server.start(router.route, handle);

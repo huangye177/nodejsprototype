@@ -1,3 +1,5 @@
+var mongodbprocess = require("./mongodbprocess");
+
 var querystring = require("querystring"),
     fs = require("fs"),
     formidable = require("formidable");
@@ -11,9 +13,11 @@ function start(response) {
     'charset=UTF-8" />'+
     '</head>'+
     '<body>'+
-    '<h2>Function List:</h2>'+
+    '<h2>Basic Function List:</h2>'+
     '<p><a href="fileupload">Image Upload</a></p>'+
 	'<p><a href="show">Show Uploaded Image</a></p>'+
+	'<h2>MongoDB Function List:</h2>'+
+    '<p><a href="mongorun">Run MongoDB Simulation</a></p>'+
     '</body>'+
     '</html>';
 
@@ -80,7 +84,16 @@ function show(response) {
   });
 }
 
+function mongorun(response) {
+  console.log("Request handler 'mongorun' was called.");
+  
+  mongodbprocess.process();
+  response.writeHead(200, {"Content-Type": "text/html"});
+  response.end();
+}
+
 exports.start = start;
 exports.fileupload = fileupload;
 exports.upload = upload;
 exports.show = show;
+exports.mongorun = mongorun;
