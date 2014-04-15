@@ -25,5 +25,6 @@ including:
 
 *	Image upload (from The Node Beginner Book)
 
+*	MongoDB basic CRUD scenarios
 
 
