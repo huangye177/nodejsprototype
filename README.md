@@ -12,6 +12,8 @@ prerequisites:
 
 `npm install mongodb`
 
+`npm install mongoose`
+
 start server: `node index.js`
 
 visit: `localhost:8888`
