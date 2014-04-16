@@ -17,7 +17,7 @@ function start(response) {
     '<p><a href="fileupload">Image Upload</a></p>'+
 	'<p><a href="show">Show Uploaded Image</a></p>'+
 	'<h2>MongoDB Function List:</h2>'+
-    '<p><a href="mongorun">Run MongoDB Simulation</a></p>'+
+	'<p><a href="mongobasic">Run Basic MongoDB</a></p>'+
     '</body>'+
     '</html>';
 
@@ -84,16 +84,52 @@ function show(response) {
   });
 }
 
-function mongorun(response) {
-  console.log("Request handler 'mongorun' was called.");
-  
-  mongodbprocess.process();
-  response.writeHead(200, {"Content-Type": "text/html"});
-  response.end();
+function mongobasic(response) {
+	
+	console.log("Request handler 'mongobasic' was called.");
+
+	var body = '<html>'+
+		'<head>'+
+	    '<meta http-equiv="Content-Type" content="text/html; '+
+	    'charset=UTF-8" />'+
+	    '</head>'+
+	    '<body>'+
+	    '<form action="/mongorun" method="post">'+
+		'Count of Insert: <input type="text" name="insertrepeat" ></input>'+
+	    'Count of Insert: <input type="text" name="searchrepeat"></input>'+
+	    '<input type="submit" value="Run Simulation" />'+
+	    '</form>'+
+	    '</body>'+
+	    '</html>';
+
+	response.writeHead(200, {"Content-Type": "text/html"});
+	response.write(body);
+	response.end();
+}
+
+function mongorun(response, request) {
+    console.log("Request handler 'mongorun' was called.");
+
+	var postData = "";
+	request.setEncoding("utf8");
+	
+	request.addListener("data", function(postDataChunk) {
+		postData += postDataChunk;
+	    console.log("Received POST data chunk '"+
+	    postDataChunk + "'.");
+	});
+
+	request.addListener("end", function() {
+		var insertrepeat = querystring.parse(postData).insertrepeat;
+		var searchrepeat = querystring.parse(postData).searchrepeat;
+		
+		mongodbprocess.process(insertrepeat, searchrepeat, response);
+	});
 }
 
 exports.start = start;
 exports.fileupload = fileupload;
 exports.upload = upload;
 exports.show = show;
+exports.mongobasic = mongobasic;
 exports.mongorun = mongorun;

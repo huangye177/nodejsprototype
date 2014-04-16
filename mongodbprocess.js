@@ -13,7 +13,19 @@ var previousFinished;
 var intervalId;
 var completedSearch;
 
-function process() {
+var innerResponse;
+
+function process(insertrepeatParam, searchrepeatParam, response) {
+	
+	if(insertrepeatParam && insertrepeatParam > 0) {
+		insertRepeat = insertrepeatParam;
+	}
+	
+	if(searchrepeatParam && searchrepeatParam > 0) {
+		searchRepeat = searchrepeatParam;
+	}
+	
+	innerResponse = response;
 	
 	console.log("MongoDBProcess is processing...");
 	
@@ -38,7 +50,6 @@ function syncInsertAndSearchScenario() {
 		
 			// create new collection under database
     		var collection = db.collection('gm_std_measurements_coveringindex');
-    	
 			collection.count(function(err, count) {
 				// check for the moment when all Documents were inserted, then perform processSearch case
         		if(count == insertRepeat) {
@@ -46,7 +57,6 @@ function syncInsertAndSearchScenario() {
 					clearInterval(intervalId);
 					console.log("* All inserted Document synchronized! (" + count + ")");
 					db.close();
-					
 					// start search scenario
 					processSearch();
 				}
@@ -126,8 +136,14 @@ function processSearch() {
 				// console.dir(results);
 				completedSearch += 1;
 				
+				// all search queries are done
 				if(completedSearch == searchRepeat) {
 					console.log("* All documents queried! (" + completedSearch + ")");
+					
+					innerResponse.writeHead(200, {"Content-Type": "text/html"});
+					innerResponse.write("Done! Number of Insert: " + insertRepeat + 
+										"; Number of Search: " + searchRepeat);
+				    innerResponse.end();
 				}
 	      	});
 		}
