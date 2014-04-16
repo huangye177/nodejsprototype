@@ -123,7 +123,11 @@ function mongorun(response, request) {
 		var insertrepeat = querystring.parse(postData).insertrepeat;
 		var searchrepeat = querystring.parse(postData).searchrepeat;
 		
-		mongodbprocess.process(insertrepeat, searchrepeat, response);
+		mongodbprocess.process(insertrepeat, searchrepeat);
+		
+		response.writeHead(200, { "Content-Type": "text/html" });
+        response.write("Requests sent! Please check progress and result from terminal output!");
+        response.end();
 	});
 }
 
