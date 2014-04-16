@@ -1,5 +1,5 @@
 var mongoClient = require('mongodb').MongoClient, 
-	format = require('util').format;
+	util = require('util');
 
 var valueRange = 100;
 var insertRepeat = 1000;
@@ -34,8 +34,9 @@ function process(insertrepeatParam, searchrepeatParam, response) {
 	processCreate();
 	
 	// set the insert-search scenario sync check interval
+	// NOTICE, the frequency can NOT be too small, otherwise will exhaust mongoDB connection!
 	previousFinished = false;
-	intervalId = setInterval(syncInsertAndSearchScenario, 1000);
+	intervalId = setInterval(syncInsertAndSearchScenario, 5000);
 
 }
 
@@ -44,6 +45,8 @@ function syncInsertAndSearchScenario() {
 	if(previousFinished == true) {
 		return;
 	}
+	
+	util.print(".");
 	
 	mongoClient.connect('mongodb://127.0.0.1:27017/testdb', {db: {native_parser: true}}, function(err, db) {
     	if(err) throw err;
@@ -59,6 +62,8 @@ function syncInsertAndSearchScenario() {
 					db.close();
 					// start search scenario
 					processSearch();
+				} else {
+					db.close();
 				}
       		});	
  	});
@@ -95,6 +100,7 @@ function processCreate() {
     		if (err) throw err;
     		console.log("* Index created!");
     		
+			var tmpCounter = 0;
 			// add all Documents 
     		for (var i = 0; i < insertRepeat; i++) {
     			var ranNumber = Math.floor((Math.random() * valueRange)+1);	
@@ -104,11 +110,15 @@ function processCreate() {
     					project_id : ranNumber, measvalue: ranNumber, refMeas: false, 
     					reliability: 1.0};
     					
-    			collection.insert(istObject, function(err, docs) {
-					if (err) console.warn(err.message);
+    			collection.insert(istObject, {w:1}, function(err, docs) {
+					if (err)  {
+						console.log(err.message);
+						throw err;
+					} else {
+						
+					}
     			});
     		}
-    		
     		console.log("* Documents created!");
     	}); // end of table and index creation
  	});
@@ -139,7 +149,7 @@ function processSearch() {
 				// all search queries are done
 				if(completedSearch == searchRepeat) {
 					console.log("* All documents queried! (" + completedSearch + ")");
-					
+					db.close();
 					innerResponse.writeHead(200, {"Content-Type": "text/html"});
 					innerResponse.write("Done! Number of Insert: " + insertRepeat + 
 										"; Number of Search: " + searchRepeat);
