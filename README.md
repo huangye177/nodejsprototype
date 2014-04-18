@@ -12,6 +12,8 @@ prerequisites: (or from European mirror: `npm --registry http://registry.npmjs.e
 
 `npm install mongodb`
 
+`npm install mongoose`
+
 START SERVER: `node index.js`
 
 VISIT: `localhost:8888`
@@ -24,6 +26,8 @@ including:
 *	Image upload (from The Node Beginner Book)
 
 *	MongoDB basic CRUD scenarios
+
+*	Mongoose based ODM 
 
 ===============
 ## Tips

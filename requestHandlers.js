@@ -1,4 +1,6 @@
-var mongodbprocess = require("./mongodbprocess");
+var mongoBasicProcess = require("./mongo_basicprocess");
+var mongoODMProcess = require("./mongo_odmprocess");
+var mongoTestProcess = require("./mongo_test");
 
 var querystring = require("querystring"),
     fs = require("fs"),
@@ -17,7 +19,8 @@ function start(response) {
     '<p><a href="fileupload">Image Upload</a></p>'+
 	'<p><a href="show">Show Uploaded Image</a></p>'+
 	'<h2>MongoDB Function List:</h2>'+
-	'<p><a href="mongobasic">Run Basic MongoDB</a></p>'+
+	'<p><a href="mongobasic">Run MongoDB Basic</a></p>'+
+	'<p><a href="mongoodm">Run MongoDB ODM (Object Document Mapper)</a></p>'+
     '</body>'+
     '</html>';
 
@@ -94,10 +97,35 @@ function mongobasic(response) {
 	    'charset=UTF-8" />'+
 	    '</head>'+
 	    '<body>'+
+		'<h2>MongoDB Basic</h2>'+
 	    '<form action="/mongorun" method="post">'+
 		'Count of Insert: <input type="text" name="insertrepeat" ></input>'+
 	    'Count of Insert: <input type="text" name="searchrepeat"></input>'+
-	    '<input type="submit" value="Run Simulation" />'+
+	    '<input type="submit" value="Run MongoDB Basic Simulation" />'+
+	    '</form>'+
+	    '</body>'+
+	    '</html>';
+
+	response.writeHead(200, {"Content-Type": "text/html"});
+	response.write(body);
+	response.end();
+}
+
+function mongoodm(response) {
+	
+	console.log("Request handler 'mongoodm' was called.");
+
+	var body = '<html>'+
+		'<head>'+
+	    '<meta http-equiv="Content-Type" content="text/html; '+
+	    'charset=UTF-8" />'+
+	    '</head>'+
+	    '<body>'+
+		'<h2>MongoDB ODM</h2>'+
+	    '<form action="/mongoodmrun" method="post">'+
+		'Count of Insert: <input type="text" name="insertrepeat" ></input>'+
+	    'Count of Insert: <input type="text" name="searchrepeat"></input>'+
+	    '<input type="submit" value="Run MongoDB ODM Simulation" />'+
 	    '</form>'+
 	    '</body>'+
 	    '</html>';
@@ -123,7 +151,34 @@ function mongorun(response, request) {
 		var insertrepeat = querystring.parse(postData).insertrepeat;
 		var searchrepeat = querystring.parse(postData).searchrepeat;
 		
-		mongodbprocess.process(insertrepeat, searchrepeat);
+		mongoBasicProcess.process(insertrepeat, searchrepeat);
+		// mongoTestProcess.process();
+		
+		response.writeHead(200, { "Content-Type": "text/html" });
+        response.write("Requests sent! Please check progress and result from terminal output!");
+        response.end();
+	});
+}
+
+function mongoodmrun(response, request) {
+    console.log("Request handler 'mongoodmrun' was called.");
+
+	var postData = "";
+	request.setEncoding("utf8");
+	
+	request.addListener("data", function(postDataChunk) {
+		postData += postDataChunk;
+	    console.log("Received POST data chunk '"+
+	    postDataChunk + "'.");
+	});
+
+	request.addListener("end", function() {
+		var insertrepeat = querystring.parse(postData).insertrepeat;
+		var searchrepeat = querystring.parse(postData).searchrepeat;
+		
+		// mongoODMProcess.process(insertrepeat, searchrepeat);
+		mongoODMProcess.basicProcess(insertrepeat, searchrepeat);
+		
 		
 		response.writeHead(200, { "Content-Type": "text/html" });
         response.write("Requests sent! Please check progress and result from terminal output!");
@@ -136,4 +191,6 @@ exports.fileupload = fileupload;
 exports.upload = upload;
 exports.show = show;
 exports.mongobasic = mongobasic;
+exports.mongoodm = mongoodm;
 exports.mongorun = mongorun;
+exports.mongoodmrun = mongoodmrun;

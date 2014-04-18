@@ -11,7 +11,9 @@ handle["/fileupload"] = requestHandlers.fileupload;
 handle["/upload"] = requestHandlers.upload;
 handle["/show"] = requestHandlers.show;
 handle["/mongobasic"] = requestHandlers.mongobasic;
+handle["/mongoodm"] = requestHandlers.mongoodm;
 handle["/mongorun"] = requestHandlers.mongorun;
+handle["/mongoodmrun"] = requestHandlers.mongoodmrun;
 
 // load server.js to process path-handler mapping with the route method from router.js
 

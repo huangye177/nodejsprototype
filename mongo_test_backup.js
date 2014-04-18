@@ -1,7 +1,7 @@
 var mongoClient = require('mongodb').MongoClient,
 util = require('util');
 
-var valueRange = 100;
+var valueRange = 1000;
 var insertRepeat = 1000;
 var searchRepeat = 100;
 var date = new Date();
