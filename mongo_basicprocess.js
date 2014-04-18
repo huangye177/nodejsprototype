@@ -1,6 +1,11 @@
 var mongoClient = require('mongodb').MongoClient,
 util = require('util');
 
+var insertIntervalTime = 1000;
+var searchIntervalTime = 10000;
+var insertPerInterval = 50000;
+var searchPerInterval = 1000;
+
 var valueRange = 1000;
 var insertRepeat = 1000;
 var searchRepeat = 1000;
@@ -19,12 +24,14 @@ var queryOption = {
 
 var previousFinished;
 var interval_insert_id;
+var interval_select_id;
 var insert_counter;
-var completedSearch;
+var select_counter;
 
 var dbPool;
 var isSimulationRunning = false;
-var isIntervalFinished = true;
+var isInsertIntervalFinished = true;
+var isSelectIntervalFinished = true;
 
 var insertStartTime;
 var insertEndTime;
@@ -43,18 +50,35 @@ function process(insertrepeatParam, searchrepeatParam) {
 	
 	isSimulationRunning = true;
 	insert_counter = 0;
+	select_counter = 0;
 	
 	// fetch passed-in parameters
     if (insertrepeatParam && insertrepeatParam > 0) {
         insertRepeat = insertrepeatParam;
-    }
+    } else {
+		insertRepeat = 1000;
+	}
 
     if (searchrepeatParam && searchrepeatParam > 0) {
         searchRepeat = searchrepeatParam;
-    }
+    } else { 
+		searchRepeat = 1000;
+	}
 
+	if(insertPerInterval > insertRepeat) {
+		insertPerInterval = insertRepeat;
+	} else {
+		insertPerInterval = 50000;
+	}
+	
+	if(searchPerInterval > searchRepeat) {
+		searchPerInterval = searchRepeat;
+	} else {
+		searchPerInterval = 1000;
+	}
+	
 	// set the search response threshold for massive concurrency 
-	searchCompletionThreshold = searchRepeat * 0.99;
+	searchCompletionThreshold = searchRepeat * 1;
 	
 	// STEP 1: clean historical database
     mongoClient.connect('mongodb://127.0.0.1:27017/testdb', function(err, db) {
@@ -101,12 +125,11 @@ function process(insertrepeatParam, searchrepeatParam) {
 						console.log("* ProcessCreate started...");
 						
 						// log time
-					    insertStartTime = new Date();
-					
 						// start insert interval, which will be followed by the search interval
 						// set the insert-search scenario sync check interval
-						isIntervalFinished = false;
-						interval_insert_id = setInterval(processCreate, 1000);
+					    insertStartTime = new Date();
+						isInsertIntervalFinished = false;
+						interval_insert_id = setInterval(processCreate, insertIntervalTime);
 						
 			    }); // end of index creation
 		    }); // end of new db connection establish for following tests
@@ -116,7 +139,7 @@ function process(insertrepeatParam, searchrepeatParam) {
 
 function processCreate() {
 	
-	if(isIntervalFinished) {
+	if(isInsertIntervalFinished) {
 		return;
 	}
 	
@@ -131,8 +154,7 @@ function processCreate() {
 	    util.print(".(" + insert_counter + ")");
 	
 		var date = new Date();
-		var amount =  50 * 1000;
-		for(var i = 0; i < amount; i++) {
+		for(var i = 0; i < insertPerInterval; i++) {
 
 			var ranNumber = Math.floor((Math.random() * 1000) + 1);
 
@@ -169,8 +191,8 @@ function processCreate() {
 	            clearInterval(interval_insert_id);
 	
 				// critical, because the callback of this method could already arrive late
-				// by then the isIntervalFinished is already marked as finished
-				if(isIntervalFinished) {
+				// by then the isInsertIntervalFinished is already marked as finished
+				if(isInsertIntervalFinished) {
 					return;
 				}
 				
@@ -178,13 +200,18 @@ function processCreate() {
 	            insertEndTime = new Date();
 				var duration = (insertEndTime.getTime() - insertStartTime.getTime()) / 1000;
 				insert_counter = 0;
-				isIntervalFinished = true;
+				isInsertIntervalFinished = true;
 				
 				console.log("");
 	            console.log("* All inserted Document synchronized! (" + count + " in " + duration + " seconds)");
 				
-	            // start search scenario
-	            processSearch();
+				// start search scenario
+				console.log("* ProcessSearch running and processing massive concurrent queries...");
+				
+				searchStartTime = new Date();
+				isSelectIntervalFinished = false;
+				interval_select_id = setInterval(processSearch, searchIntervalTime);
+				
 	
 	        } else {
 				// do nothing, waiting for the next round of interval check
@@ -195,17 +222,16 @@ function processCreate() {
 
 function processSearch() {
 
-    console.log("* ProcessSearch running and processing massive concurrent queries...");
+	if(isSelectIntervalFinished) {
+		return;
+	}
 
-    // reset search counter
-    completedSearch = 0;
+	// print awaiting status
+    util.print(".");
 
     var collection = dbPool.collection('gm_std_measurements_coveringindex');
-
-    // log time
-    searchStartTime = new Date();
-
-    for (var i = 0; i < searchRepeat; i++) {
+	
+    for (var i = 0; i < searchPerInterval; i++) {
         // Locate all the entries using find
         var ranNumber = Math.floor((Math.random() * valueRange) + 1);
 
@@ -215,32 +241,42 @@ function processSearch() {
 
         collection.find(query, queryOption).toArray(function(err, results) {
             // console.dir(results);
-            completedSearch += 1;
+			select_counter++;
 			
-            // most of search queries are done
-			if (completedSearch == searchCompletionThreshold) {
+			// most of search queries are done
+			if(select_counter == Math.floor(searchCompletionThreshold)) { 
 				// log time
-                searchEndTime = new Date();
+		        searchEndTime = new Date();
 				var timeduration =  (searchEndTime.getTime() - searchStartTime.getTime()) / 1000;
+				console.log("");
 				console.log("* Search Thresthold reached! (" + timeduration + " seconds)");
 			}
-			
-			// all search queries are done (although some are delayed due to network or I/O problem)
-            if (completedSearch >= searchRepeat) {
-	
-                console.log("* All documents queried! (" + completedSearch + ")");
-                
-                var insertDuration = (insertEndTime.getTime() - insertStartTime.getTime()) / 1000;
-                var searchDuration = (searchEndTime.getTime() - searchStartTime.getTime()) / 1000;
-                var resultStr = "* Done! Number of Insert: " + insertRepeat + " (" + insertDuration +
-                				" seconds); Number of Search: " + searchRepeat +
-                				" (" + searchDuration + " seconds).";
-
-                console.log(resultStr);
-				isSimulationRunning = false;
-            }
         });
-    }
+	}
+		
+	// check if interval is finished
+	if(select_counter >= searchRepeat) {
+		
+		clearInterval(interval_select_id);
+		isSelectIntervalFinished = true;
+		
+		console.log("");
+		console.log("* All documents queried! (" + select_counter + ")");
+		
+		var insertDuration = (insertEndTime.getTime() - insertStartTime.getTime()) / 1000;
+		var searchDuration = (searchEndTime.getTime() - searchStartTime.getTime()) / 1000;
+		var insertIntervalOverhead = (insertRepeat / insertPerInterval) * (insertIntervalTime / 1000);
+		var selectIntervalOverhead = (searchRepeat / searchPerInterval) * (searchIntervalTime / 1000);
+		var resultStr = "* Done! \n* Number of Insert [with insert-interval overhead: " +  
+						insertIntervalOverhead + " seconds] " + 
+						insertRepeat + " (" + insertDuration + " seconds); " + 
+						"\n* Number of Search [with query-interval overhead: " + 
+						selectIntervalOverhead + " seconds] " + 
+						searchRepeat + " (" + searchDuration + " seconds).";
+						
+		console.log(resultStr);
+		isSimulationRunning = false;
+	}
 }
 
 exports.process = process;
