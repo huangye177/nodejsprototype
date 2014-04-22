@@ -45,44 +45,63 @@ var indexObject = {
 };
 
 // query returning
-var queryReturnOption = 'fkDataSeriesId measDateUtc measDateSite project_id measvalue refMeas reliability';
+var queryReturnOption = {
+    fkDataSeriesId: 1,
+    measDateUtc: 1,
+    measDateSite: 1,
+    project_id: 1,
+    measvalue: 1,
+    refMeas: 1,
+    reliability: 1,
+    _id: 0
+};
+// var queryReturnOption = 'fkDataSeriesId measDateUtc measDateSite project_id measvalue refMeas reliability';
+
 
 // make the infrastructure of Mongoose upon MongoDB
-// define schema
 // ODM schema and model
-var measSchema = new Schema({
-	fkDataSeriesId: Number,
-    measDateUtc: Date,
-    measDateSite: Date,
-    project_id: Number,
-    measvalue: Number,
-    refMeas: Boolean,
-    reliability: Number
-}, { collection: 'gm_std_measurements_coveringindex' });
+var measSchema;
+var Meas;
+function makeSchema() {
 
-// define index in schema level
-measSchema.index(indexObject, {name: 'default_mongodb_test_index'});
+	// define schema
+	if(!Meas) {
+		
+		measSchema = new Schema({
+			fkDataSeriesId: Number,
+		    measDateUtc: Date,
+		    measDateSite: Date,
+		    project_id: Number,
+		    measvalue: Number,
+		    refMeas: Boolean,
+		    reliability: Number
+		}, { collection: 'gm_std_measurements_coveringindex' });
 
-// instance methods
-// NOTE: methods must be added to the schema before compiling it with mongoose.model()
-measSchema.methods.printData = function () {
-  console.log("DS: " + this.fkDataSeriesId + 
-			  "; DateUtc: " + this.measDateUtc + 
-			  "; measValue" + this.measvalue);
+		// define index in schema level
+		measSchema.index(indexObject, {name: 'default_mongodb_test_index'});
+
+		// instance methods
+		// NOTE: methods must be added to the schema before compiling it with mongoose.model()
+		measSchema.methods.printData = function () {
+		  console.log("DS: " + this.fkDataSeriesId + 
+					  "; DateUtc: " + this.measDateUtc + 
+					  "; measValue" + this.measvalue);
+		}
+
+		// statics methods
+		measSchema.statics.findByDataSeriesId = function(dsId, cb) {
+			this.find({fkDataSeriesId: dsId}, cb);
+		}
+
+		// virtuals attributes (not persistent)
+		measSchema.virtual('datetimeString').get(function () {
+		  return "UTC: " + this.measDateUtc + '; SITE: ' + this.measDateSite;
+		});
+
+		// compile the model from Schema
+		Meas = mongoose.model('Meas', measSchema);
+	}	
 }
-
-// statics methods
-measSchema.statics.findByDataSeriesId = function(dsId, cb) {
-	this.find({fkDataSeriesId: dsId}, cb);
-}
-
-// virtuals attributes (not persistent)
-measSchema.virtual('datetimeString').get(function () {
-  return "UTC: " + this.measDateUtc + '; SITE: ' + this.measDateSite;
-});
-
-// compile the model from Schema
-var Meas = mongoose.model('Meas', measSchema);
 
 function process(insertrepeatParam, searchrepeatParam) {
 
@@ -146,6 +165,9 @@ function process(insertrepeatParam, searchrepeatParam) {
 				
 				sleep(3 * 1000);
 				console.log("DB dropped!");
+				
+				// define the schema
+				makeSchema();
 				
 				// use the 'same' default connection to proceed
 				insertStartTime = new Date();
