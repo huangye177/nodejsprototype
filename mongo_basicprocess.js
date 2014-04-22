@@ -1,5 +1,8 @@
-var mongoClient = require('mongodb').MongoClient,
-util = require('util');
+var mongoClient = require('mongodb').MongoClient;
+var util = require('util');
+
+var insertPerIntervalFinal = 50000;
+var searchPerIntervalFinal = 1000;
 
 var insertIntervalTime = 1000;
 var searchIntervalTime = 10000;
@@ -68,17 +71,17 @@ function process(insertrepeatParam, searchrepeatParam) {
 	if(insertPerInterval > insertRepeat) {
 		insertPerInterval = insertRepeat;
 	} else {
-		insertPerInterval = 50000;
+		insertPerInterval = insertPerIntervalFinal;
 	}
 	
 	if(searchPerInterval > searchRepeat) {
 		searchPerInterval = searchRepeat;
 	} else {
-		searchPerInterval = 1000;
+		searchPerInterval = searchPerIntervalFinal;
 	}
 	
 	// set the search response threshold for massive concurrency 
-	searchCompletionThreshold = searchRepeat * 1;
+	searchCompletionThreshold = searchRepeat * 0.99;
 	
 	// STEP 1: clean historical database
     mongoClient.connect('mongodb://127.0.0.1:27017/testdb', function(err, db) {

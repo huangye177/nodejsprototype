@@ -1,21 +1,37 @@
 var mongoose = require('mongoose');
+var util = require('util');
+
 var Schema = mongoose.Schema;
 
-// process controlling variables
-var date = new Date();
+var insertPerIntervalFinal = 50000;
+var searchPerIntervalFinal = 1000;
+
+var insertIntervalTime = 1000;
+var searchIntervalTime = 10000;
+var insertPerInterval = 50000;
+var searchPerInterval = 1000;
+
 var valueRange = 1000;
-var insertRepeat = 1;
-var searchRepeat = 1;
+var insertRepeat = 1000;
+var searchRepeat = 1000;
+var date = new Date();
 
 var previousFinished;
-var intervalId;
-var completedSearch;
+var interval_insert_id;
+var interval_select_id;
+var insert_counter;
+var select_counter;
+
+var dbPool;
 var isSimulationRunning = false;
+var isInsertIntervalFinished = true;
+var isSelectIntervalFinished = true;
 
 var insertStartTime;
 var insertEndTime;
 var searchStartTime;
 var searchEndTime;
+var searchCompletionThreshold;
 
 // index object
 var indexObject = {
@@ -26,12 +42,14 @@ var indexObject = {
     measvalue: 1,
     refMeas: 1,
     reliability: 1
-	};
+};
 
 // query returning
 var queryReturnOption = 'fkDataSeriesId measDateUtc measDateSite project_id measvalue refMeas reliability';
-	
-// define schmea
+
+// make the infrastructure of Mongoose upon MongoDB
+// define schema
+// ODM schema and model
 var measSchema = new Schema({
 	fkDataSeriesId: Number,
     measDateUtc: Date,
@@ -43,7 +61,7 @@ var measSchema = new Schema({
 }, { collection: 'gm_std_measurements_coveringindex' });
 
 // define index in schema level
-measSchema.index(indexObject); 
+measSchema.index(indexObject, {name: 'default_mongodb_test_index'});
 
 // instance methods
 // NOTE: methods must be added to the schema before compiling it with mongoose.model()
@@ -63,130 +81,223 @@ measSchema.virtual('datetimeString').get(function () {
   return "UTC: " + this.measDateUtc + '; SITE: ' + this.measDateSite;
 });
 
-// compile the model
+// compile the model from Schema
 var Meas = mongoose.model('Meas', measSchema);
 
-function basicProcess(insertrepeatParam, searchrepeatParam) {
+function process(insertrepeatParam, searchrepeatParam) {
+
+	// ensure only one simulation is being processed
+	if(isSimulationRunning) {
+		console.log("- A simulation is ongoing, newly arrived request (" + insertrepeatParam + 
+					"/" + searchrepeatParam +") quits.");
+		return;
+	}
 	
-	console.log("basicProcess started... ");
+	isSimulationRunning = true;
+	insert_counter = 0;
+	select_counter = 0;
 	
-	var Meas = mongoose.model('Meas', measSchema);
+	// fetch passed-in parameters
+    if (insertrepeatParam && insertrepeatParam > 0) {
+        insertRepeat = insertrepeatParam;
+    } else {
+		insertRepeat = 1000;
+	}
+
+    if (searchrepeatParam && searchrepeatParam > 0) {
+        searchRepeat = searchrepeatParam;
+    } else { 
+		searchRepeat = 1000;
+	}
+
+	if(insertPerInterval > insertRepeat) {
+		insertPerInterval = insertRepeat;
+	} else {
+		insertPerInterval = insertPerIntervalFinal;
+	}
 	
-	mongoose.connect('mongodb://localhost:27017/testdb', function(err) {
+	if(searchPerInterval > searchRepeat) {
+		searchPerInterval = searchRepeat;
+	} else {
+		searchPerInterval = searchPerIntervalFinal;
+	}
+	
+	// set the search response threshold for massive concurrency 
+	searchCompletionThreshold = searchRepeat * 0.99;
+	
+	// make debug mode if necessary 
+	// mongoose.set('debug', true);
+	
+	// hook the connection open and error events
+	mongoose.connection.once('open', function(err) {
+		if(err) {console.error(err); console.error("BOMB+++")}
+	  	console.log('* MongoDB ODM connection established!');
+	});
+	
+	mongoose.connection.on('error', function(err) {
+	    console.error('MongoDB error: %s', err);
+	});
+	
+	// drop historical database by creating or connecting to target database
+	mongoose.connect('mongodb://localhost:27017/testdb', function() {
+		if(mongoose.connection.db) {
+			console.log("* Historical database found, dropping for 3 seconds...");
+			mongoose.connection.db.dropDatabase(function(err) {
+				
+				sleep(3 * 1000);
+				console.log("DB dropped!");
+				
+				// use the 'same' default connection to proceed
+				insertStartTime = new Date();
+				isInsertIntervalFinished = false;
+				interval_insert_id = setInterval(processCreate, insertIntervalTime);
+				
+				console.log("All document inserted!");
+				
+			});
+		}
 		
-		if(err) {console.log(err);}
+	}); // end of drop database callback
+}
+
+function processCreate() {
+	
+	if(isInsertIntervalFinished) {
+		return;
+	}
+	
+	if(insert_counter < insertRepeat) {
 		
+		// insert is not yet all sent out, continue to insert
+		// print awaiting status
+	    util.print(".(" + insert_counter + ")");
+	
 		var currentDate = new Date();
-		
-		var amount = 100 * 1000;
-		for (var i = 0; i < amount; i++) {
-			
+		for (var i = 0; i < insertPerInterval; i++) {
+
             var ranNumber = Math.floor((Math.random() * 1000) + 1);
 
 			var singleMeas = new Meas({ fkDataSeriesId: ranNumber, 
 					measDateUtc: currentDate, measDateSite: currentDate,
 					project_id: ranNumber, measvalue: ranNumber, 
 					refMeas: false, reliability: 1});
-			
-			
+					
 			singleMeas.save();
-			
-			if (i % 100 == 0) {
-				console.log("100 records created, next one: " + i);
-			}
-				
-			// save instance
-			// singleMeas.save(function (err, meas) {
-			//	if (err) return console.error(err);
-			//	console.log("Once instance saved. ");
-			// });
+			insert_counter++;
 		}
+	}
+	else 
+	{
+		// after all insert requests are sent, check whether all inserts are synchronized 
 		
-		console.log("All instance saved. ");
-	});
+		// print awaiting status
+	    util.print(".");
+		
+		// wait for all inserted Documents to be synchronized
+		Meas.count(function(err, count){
+			
+			// check for the moment when all Documents were inserted, then perform processSearch case
+	        if (count >= insertRepeat) {
+		
+	            clearInterval(interval_insert_id);
+	
+				// critical, because the callback of this method could already arrive late
+				// by then the isInsertIntervalFinished is already marked as finished
+				if(isInsertIntervalFinished) {
+					return;
+				}
+				
+				// log time
+	            insertEndTime = new Date();
+				var duration = (insertEndTime.getTime() - insertStartTime.getTime()) / 1000;
+				insert_counter = 0;
+				isInsertIntervalFinished = true;
+				
+				console.log("");
+	            console.log("* All inserted Document synchronized! (" + count + " in " + duration + " seconds)");
+				
+				// start search scenario
+				console.log("* ProcessSearch running and processing massive concurrent queries...");
+				
+				searchStartTime = new Date();
+				isSelectIntervalFinished = false;
+				interval_select_id = setInterval(processSearch, searchIntervalTime);
+	
+	        } else {
+				// do nothing, waiting for the next round of interval check
+	        }
+		});
+	} 
 }
 
-function process(insertrepeatParam, searchrepeatParam) {
+function processSearch() {
+
+	if(isSelectIntervalFinished) {
+		return;
+	}
+
+	// print awaiting status
+    util.print(".");
 	
-	// fetch passed-in parameters
-    if (insertrepeatParam && insertrepeatParam > 0) {
-        insertRepeat = insertrepeatParam;
-    }
+    for (var i = 0; i < searchPerInterval; i++) {
+        // Locate all the entries using find
+        var ranNumber = Math.floor((Math.random() * valueRange) + 1);
 
-    if (searchrepeatParam && searchrepeatParam > 0) {
-        searchRepeat = searchrepeatParam;
-    }
-	
-	// drop historical database by creating or connecting to target database
-	mongoose.connect('mongodb://localhost:27017/testdb', function() {
-		if(mongoose.connection.db) {
-			console.log("* Historical database found, dropping...");
-			mongoose.connection.db.dropDatabase();
-			
-			sleep(5 * 1000);
-		}
-		
-	}); // end of drop database callback
-	
-	// (re-)create and open mongoose connection
-	mongoose.connect('mongodb://localhost:27017/testdb', function(err) {
-		
-		if(err) {console.error(err);}
-	
-		// mongoose.connection.on('error', console.error.bind(console, 'MongoDB ODM connection error:'));
-		mongoose.connection.once('open', function(err) {
-			if(err) {console.error(err); console.error("BOMB+++")}
-	  		console.log('* MongoDB ODM connection established!');
-		});
-		
-		// new some data
-		var currentDate = new Date();
-		var singleMeas = new Meas({ fkDataSeriesId: 600, 
-				measDateUtc: currentDate, measDateSite: currentDate,
-				project_id: 1000, measvalue: 1000, 
-				refMeas: false, reliability: 1});
-
-		console.log(singleMeas.fkDataSeriesId);
-		console.log(singleMeas.datetimeString);
-
-		singleMeas.printData();
-
-		// save instance
-		singleMeas.save(function (err, meas) {
-			if (err) return console.error(err);
-			console.log("instance saved: " + meas);
-		  	meas.printData();
-		});
-
-		// find all 
-		Meas.find(function (err, allmeas) {
-		  if (err) return console.error(err);
-		  console.log(allmeas);
-		})
+        var query = {
+            'fkDataSeriesId': ranNumber
+        };
 
 		// find by DataSeriesId with Mongoose built-in methods
-		Meas.find({ fkDataSeriesId: 600 }, queryReturnOption, function(err, foundMeas) {
+		Meas.find(query, queryReturnOption, function(err, foundMeas) {
 			if (err) return console.error(err);
-			console.log(foundMeas);
-		})
-
-		// find with statics method
-		Meas.findByDataSeriesId(600, function(err, founds) {
-			console.log(founds);
-		})
-	
-	}); // end of (re-)open/create database callback
-	
+			
+			// console.dir(foundMeas);
+			select_counter++;
+			
+			// most of search queries are done
+			if(select_counter == Math.floor(searchCompletionThreshold)) { 
+				// log time
+		        searchEndTime = new Date();
+				var timeduration =  (searchEndTime.getTime() - searchStartTime.getTime()) / 1000;
+				console.log("");
+				console.log("* Search Thresthold reached! (" + timeduration + " seconds)");
+			}
+		});
+		
+	}
+		
+	// check if interval is finished
+	if(select_counter >= searchRepeat) {
+		
+		clearInterval(interval_select_id);
+		isSelectIntervalFinished = true;
+		
+		console.log("");
+		console.log("* All documents queried! (" + select_counter + ")");
+		
+		var insertDuration = (insertEndTime.getTime() - insertStartTime.getTime()) / 1000;
+		var searchDuration = (searchEndTime.getTime() - searchStartTime.getTime()) / 1000;
+		var insertIntervalOverhead = (insertRepeat / insertPerInterval) * (insertIntervalTime / 1000);
+		var selectIntervalOverhead = (searchRepeat / searchPerInterval) * (searchIntervalTime / 1000);
+		var resultStr = "* Done! \n* Number of Insert [with insert-interval overhead: " +  
+						insertIntervalOverhead + " seconds] " + 
+						insertRepeat + " (" + insertDuration + " seconds); " + 
+						"\n* Number of Search [with query-interval overhead: " + 
+						selectIntervalOverhead + " seconds] " + 
+						searchRepeat + " (" + searchDuration + " seconds).";
+						
+		console.log(resultStr);
+		isSimulationRunning = false;
+	}
 }
+
 
 function sleep(milliSeconds) {
     var startTime = new Date().getTime();
     while (new Date().getTime() < startTime + milliSeconds);
-  }
+}
+
 
 exports.process = process;
-exports.basicProcess = basicProcess;
-
-
 
 

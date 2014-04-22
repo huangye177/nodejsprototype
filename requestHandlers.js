@@ -1,6 +1,5 @@
 var mongoBasicProcess = require("./mongo_basicprocess");
 var mongoODMProcess = require("./mongo_odmprocess");
-var mongoTestProcess = require("./mongo_test");
 
 var querystring = require("querystring"),
     fs = require("fs"),
@@ -152,7 +151,6 @@ function mongorun(response, request) {
 		var searchrepeat = querystring.parse(postData).searchrepeat;
 		
 		mongoBasicProcess.process(insertrepeat, searchrepeat);
-		// mongoTestProcess.process();
 		
 		response.writeHead(200, { "Content-Type": "text/html" });
         response.write("Requests sent! Please check progress and result from terminal output!");
@@ -176,9 +174,7 @@ function mongoodmrun(response, request) {
 		var insertrepeat = querystring.parse(postData).insertrepeat;
 		var searchrepeat = querystring.parse(postData).searchrepeat;
 		
-		// mongoODMProcess.process(insertrepeat, searchrepeat);
-		mongoODMProcess.basicProcess(insertrepeat, searchrepeat);
-		
+		mongoODMProcess.process(insertrepeat, searchrepeat);
 		
 		response.writeHead(200, { "Content-Type": "text/html" });
         response.write("Requests sent! Please check progress and result from terminal output!");
