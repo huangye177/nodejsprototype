@@ -22,7 +22,6 @@ var interval_select_id;
 var insert_counter;
 var select_counter;
 
-var dbPool;
 var isSimulationRunning = false;
 var isInsertIntervalFinished = true;
 var isSelectIntervalFinished = true;
@@ -81,6 +80,7 @@ function makeSchema() {
 
 		// instance methods
 		// NOTE: methods must be added to the schema before compiling it with mongoose.model()
+		// NOTICE: NOT used here, only for demo purpose
 		measSchema.methods.printData = function () {
 		  console.log("DS: " + this.fkDataSeriesId + 
 					  "; DateUtc: " + this.measDateUtc + 
@@ -88,11 +88,13 @@ function makeSchema() {
 		}
 
 		// statics methods
+		// NOTICE: NOT used here, only for demo purpose
 		measSchema.statics.findByDataSeriesId = function(dsId, cb) {
 			this.find({fkDataSeriesId: dsId}, cb);
 		}
 
 		// virtuals attributes (not persistent)
+		// NOTICE: NOT used here, only for demo purpose
 		measSchema.virtual('datetimeString').get(function () {
 		  return "UTC: " + this.measDateUtc + '; SITE: ' + this.measDateSite;
 		});
@@ -160,11 +162,13 @@ function process(insertrepeatParam, searchrepeatParam) {
 	
 	// drop historical database by creating or connecting to target database
 	mongoose.connect('mongodb://localhost:27017/testdb', function() {
+		
 		if(mongoose.connection.db) {
 			
 			// define the schema
 			makeSchema();
 			
+			// remove historical data
 			Meas.remove({}, function(err) { 
 				if(err) console.log(err);
 				
@@ -172,15 +176,14 @@ function process(insertrepeatParam, searchrepeatParam) {
 				
 				console.log('* Start Documentation insertion!'); 
 				
-				// use the SAME mongoose default connection to proceed
+				// use the SAME mongoose default connection to proceed create and search scenarios
 				insertStartTime = new Date();
 				isInsertIntervalFinished = false;
 				interval_insert_id = setInterval(processCreate, insertIntervalTime);
 				
 			});
 		}
-		
-	}); // end of drop database callback
+	}); 
 }
 
 function processCreate() {

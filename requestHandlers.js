@@ -99,7 +99,7 @@ function mongobasic(response) {
 		'<h2>MongoDB Basic</h2>'+
 	    '<form action="/mongorun" method="post">'+
 		'Count of Insert: <input type="text" name="insertrepeat" ></input>'+
-	    'Count of Insert: <input type="text" name="searchrepeat"></input>'+
+	    '<p style="display:none;">Count of Insert: <input type="text" name="searchrepeat"></input></p>'+
 	    '<input type="submit" value="Run MongoDB Basic Simulation" />'+
 	    '</form>'+
 	    '</body>'+
@@ -123,7 +123,7 @@ function mongoodm(response) {
 		'<h2>MongoDB ODM</h2>'+
 	    '<form action="/mongoodmrun" method="post">'+
 		'Count of Insert: <input type="text" name="insertrepeat" ></input>'+
-	    'Count of Insert: <input type="text" name="searchrepeat"></input>'+
+	    '<p style="display:none;">Count of Insert: <input type="text" name="searchrepeat"></input></p>'+
 	    '<input type="submit" value="Run MongoDB ODM Simulation" />'+
 	    '</form>'+
 	    '</body>'+
