@@ -68,12 +68,14 @@ function process(insertrepeatParam, searchrepeatParam) {
 		searchRepeat = 1000;
 	}
 
+	insertPerInterval = insertPerIntervalFinal;
 	if(insertPerInterval > insertRepeat) {
 		insertPerInterval = insertRepeat;
 	} else {
 		insertPerInterval = insertPerIntervalFinal;
 	}
 	
+	searchPerInterval = searchPerIntervalFinal;
 	if(searchPerInterval > searchRepeat) {
 		searchPerInterval = searchRepeat;
 	} else {

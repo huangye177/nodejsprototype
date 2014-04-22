@@ -64,9 +64,8 @@ var measSchema;
 var Meas;
 function makeSchema() {
 
-	// define schema
 	if(!Meas) {
-		
+		// define schema
 		measSchema = new Schema({
 			fkDataSeriesId: Number,
 		    measDateUtc: Date,
@@ -97,10 +96,10 @@ function makeSchema() {
 		measSchema.virtual('datetimeString').get(function () {
 		  return "UTC: " + this.measDateUtc + '; SITE: ' + this.measDateSite;
 		});
-
+		
 		// compile the model from Schema
 		Meas = mongoose.model('Meas', measSchema);
-	}	
+	}
 }
 
 function process(insertrepeatParam, searchrepeatParam) {
@@ -128,13 +127,15 @@ function process(insertrepeatParam, searchrepeatParam) {
     } else { 
 		searchRepeat = 1000;
 	}
-
+	
+	insertPerInterval = insertPerIntervalFinal;
 	if(insertPerInterval > insertRepeat) {
 		insertPerInterval = insertRepeat;
 	} else {
 		insertPerInterval = insertPerIntervalFinal;
 	}
 	
+	searchPerInterval = searchPerIntervalFinal;
 	if(searchPerInterval > searchRepeat) {
 		searchPerInterval = searchRepeat;
 	} else {
@@ -160,21 +161,21 @@ function process(insertrepeatParam, searchrepeatParam) {
 	// drop historical database by creating or connecting to target database
 	mongoose.connect('mongodb://localhost:27017/testdb', function() {
 		if(mongoose.connection.db) {
-			console.log("* Historical database found, dropping for 3 seconds...");
-			mongoose.connection.db.dropDatabase(function(err) {
+			
+			// define the schema
+			makeSchema();
+			
+			Meas.remove({}, function(err) { 
+				if(err) console.log(err);
 				
-				sleep(3 * 1000);
-				console.log("DB dropped!");
+			    console.log('* Historical data removed!');
 				
-				// define the schema
-				makeSchema();
+				console.log('* Start Documentation insertion!'); 
 				
-				// use the 'same' default connection to proceed
+				// use the SAME mongoose default connection to proceed
 				insertStartTime = new Date();
 				isInsertIntervalFinished = false;
 				interval_insert_id = setInterval(processCreate, insertIntervalTime);
-				
-				console.log("All document inserted!");
 				
 			});
 		}
@@ -206,6 +207,7 @@ function processCreate() {
 					
 			singleMeas.save();
 			insert_counter++;
+			singleMeas = null;
 		}
 	}
 	else 
