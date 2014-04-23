@@ -1,19 +1,52 @@
 var mongoClient = require('mongodb').MongoClient;
 var util = require('util');
 
+// method invoking interval milliseconds 
+var insertIntervalTime = 1000;
+var searchIntervalTime = 10000;
+
+// default (final) number of insert/search operations per interval 
+// NOTICE: should use meaningful value depending on running machines to match 
+// the limitation of RAM and V8 engine
 var insertPerIntervalFinal = 50000;
 var searchPerIntervalFinal = 1000;
 
-var insertIntervalTime = 1000;
-var searchIntervalTime = 10000;
+// real number of insert/search operations per interval 
+// NOTICE: should use meaningful value depending on running machines to match 
+// the limitation of RAM and V8 engine
 var insertPerInterval = 50000;
 var searchPerInterval = 1000;
 
-var valueRange = 1000;
+// sum of insert/search operations in individual test
 var insertRepeat = 1000;
 var searchRepeat = 1000;
+
+// interval controlling handlers
+var previousFinished;
+var interval_insert_id;
+var interval_select_id;
+var isSimulationRunning = false;
+var isInsertIntervalFinished = true;
+var isSelectIntervalFinished = true;
+
+// counter of insert/search operations
+var insert_counter;
+var select_counter;
+
+// time logger
+var insertStartTime;
+var insertEndTime;
+var searchStartTime;
+var searchEndTime;
+
+// threshold of concurrent search returning acceptance
+var searchCompletionThreshold;
+
+// inner-test parameter values
+var valueRange = 1000;
 var date = new Date();
 
+// index object
 var queryOption = {
     fkDataSeriesId: 1,
     measDateUtc: 1,
@@ -25,22 +58,8 @@ var queryOption = {
     _id: 0
 };
 
-var previousFinished;
-var interval_insert_id;
-var interval_select_id;
-var insert_counter;
-var select_counter;
-
+// db connection
 var dbPool;
-var isSimulationRunning = false;
-var isInsertIntervalFinished = true;
-var isSelectIntervalFinished = true;
-
-var insertStartTime;
-var insertEndTime;
-var searchStartTime;
-var searchEndTime;
-var searchCompletionThreshold;
 
 function process(insertrepeatParam, searchrepeatParam) {
 

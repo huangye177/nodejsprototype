@@ -3,33 +3,49 @@ var util = require('util');
 
 var Schema = mongoose.Schema;
 
-var insertPerIntervalFinal = 50000;
-var searchPerIntervalFinal = 1000;
-
+// method invoking interval milliseconds 
 var insertIntervalTime = 1000;
 var searchIntervalTime = 10000;
-var insertPerInterval = 50000;
+
+// default (final) number of insert/search operations per interval 
+// NOTICE: should use meaningful value depending on running machines to match 
+// the limitation of RAM and V8 engine
+var insertPerIntervalFinal = 5000;
+var searchPerIntervalFinal = 1000;
+
+// real number of insert/search operations per interval 
+// NOTICE: should use meaningful value depending on running machines to match 
+// the limitation of RAM and V8 engine
+var insertPerInterval = 5000;
 var searchPerInterval = 1000;
 
-var valueRange = 1000;
+// sum of insert/search operations in individual test
 var insertRepeat = 1000;
 var searchRepeat = 1000;
+
+// inner-test parameter values
+var valueRange = 1000;
 var date = new Date();
 
+// interval controlling handlers
 var previousFinished;
 var interval_insert_id;
 var interval_select_id;
-var insert_counter;
-var select_counter;
-
 var isSimulationRunning = false;
 var isInsertIntervalFinished = true;
 var isSelectIntervalFinished = true;
 
+// counter of insert/search operations
+var insert_counter;
+var select_counter;
+
+// time logger
 var insertStartTime;
 var insertEndTime;
 var searchStartTime;
 var searchEndTime;
+
+// threshold of concurrent search returning acceptance
 var searchCompletionThreshold;
 
 // index object
@@ -152,7 +168,7 @@ function process(insertrepeatParam, searchrepeatParam) {
 	
 	// hook the connection open and error events
 	mongoose.connection.once('open', function(err) {
-		if(err) {console.error(err); console.error("BOMB+++")}
+		if(err) { console.error(err); console.error(err); }
 	  	console.log('* MongoDB ODM connection established!');
 	});
 	
@@ -165,7 +181,7 @@ function process(insertrepeatParam, searchrepeatParam) {
 		
 		if(mongoose.connection.db) {
 			
-			// define the schema
+			// define the schema, now the schema is created and compiled into a model: Meas
 			makeSchema();
 			
 			// remove historical data
