@@ -38,6 +38,14 @@ to clear NPM installation:
 
 `npm cache clean`
 
+to overcome problem like "Failed to load c++ bson extension, using pure JS version"
+
+for mongodb npm plugin: go to 'node_modules/mongodb/node_modules/bson/ext/index.js'
+
+for mongoose npm plugin: go to 'node_modules/mongoose/node_modules/mongodb/node_modules/bson/ext/index.js'
+
+change `bson = require('../build/Release/bson'); ` into `bson = require('bson');`
+
 
 
 
