@@ -74,8 +74,6 @@ Inside the delete-insert-query event chain, the start of next event must be wrap
 
 ### mongo_odmprocess.js
 
-This script use the same delete-insert-query event chain and interval mechanism as described for mongo_basicprocess.js. The difference is, each insert interval means 5000 Documents are generated and (to be) inserted in each interval; this is because of more RAM usage requirement from the adopted ODM framework: mongoose.
-
-
+This script uses the same delete-insert-query event chain and interval mechanism as described for mongo_basicprocess.js. The difference is, each insert interval means 5000 Documents are generated and (to be) inserted in each interval; this is because of more RAM usage requirement from the adopted ODM framework: mongoose.
 
 
